@@ -1,0 +1,36 @@
+// Grammar of the rule language, see spec.md.
+//
+// Each Rule starts on a new line. A line starting with `|` continues the Patterns
+// of the Rule above; `|` only separates Patterns, never Rules.
+
+linguistic_rules: _NL? (rule (_NL rule)* _NL?)?
+
+rule: RULE_NAME "->" alternatives
+alternatives: pattern ("|" pattern)*
+pattern: element+
+
+?element: atom
+        | atom "?"              -> opt
+
+?atom: "_"                      -> lefts
+     | "!" SYMBOL               -> head
+     | EMPTY                    -> empty
+     | STRING                   -> strpat
+     | SYMBOL                   -> symbol
+     | RULE_NAME                -> rule_ref
+     | "(" alternatives ")"     -> anon_rule
+
+// RuleName: python class name. symbol: python variable name, but a lone `_` is Lefts.
+// SYMBOL has a higher priority so that `_foo` isn't lexed as `_` `foo`.
+RULE_NAME: /[A-Z][A-Za-z0-9_]*/
+SYMBOL.2: /[a-z][A-Za-z0-9_]*|_[A-Za-z0-9_]+/
+EMPTY: "ø" | "0"
+STRING: /"(\\.|[^"\\])*"/
+
+// Line breaks (blank lines included) separate Rules, except the ones before a `|`.
+_CONTINUE.3: /(\r?\n[ \t]*)+(?=\|)/
+_NL: /(\r?\n[ \t]*)+/
+
+%import common.WS_INLINE
+%ignore WS_INLINE
+%ignore _CONTINUE
